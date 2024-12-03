@@ -1,68 +1,83 @@
-#include <Servo.h> 
+#include <Servo.h>
 
-Servo servo1; 
-Servo servo2; 
+Servo servo1;
+Servo servo2;
 
-int button = 3; 
-int eyes = 9;         
+const int BUTTON_PIN = 3;
+const int EYES_PIN = 9;
 
-int reading;           
-bool faceplateOpen = false; 
+bool faceplateOpen = false;
+unsigned long lastDebounceTime = 0;
+unsigned long debounceDelay = 250; // Increased debounce delay
+int lastButtonState = LOW;
 
-void setup() 
-{
+void setup() {
   Serial.begin(9600);
+
   servo1.attach(5);
-  servo2.attach(6);    
-  pinMode(eyes, OUTPUT);
-  pinMode(button, INPUT); 
+  servo2.attach(6);
 
- if (faceplateOpen) {
-    closeFacePlate();
-  }
+  pinMode(EYES_PIN, OUTPUT);
+  pinMode(BUTTON_PIN, INPUT_PULLUP); // Use internal pull-up resistor
 
+  // Initialize servos to closed position
   servo1.write(170);
   servo2.write(0);
 
-  Serial.println("Setup complete");  
+  Serial.println("Setup complete");
 }
 
 void loop() {
-  reading = digitalRead(button);
+  int reading = digitalRead(BUTTON_PIN);
 
-  static unsigned long lastPress = 0;
-  if (reading == HIGH && millis() - lastPress > 50) { 
-    lastPress = millis();
+  // Check for button state change with debounce
+  if (reading != lastButtonState) {
+    lastDebounceTime = millis();
+  }
 
-    if (faceplateOpen) {
-      closeFacePlate();
-      lightsOn();
-      faceplateOpen = false;
-    } else {
-      openFacePlate();
-      lightsOff();
-      faceplateOpen = true;
+  servo1.attach(5);
+  servo2.attach(6);
+
+  // Check if enough time has passed to consider the button stable
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    // If the button is pressed (LOW because of INPUT_PULLUP)
+    if (reading == LOW) {
+      // Toggle faceplate
+      if (faceplateOpen) {
+        closeFacePlate();
+        lightsOn();
+        faceplateOpen = false;
+      } else {
+        openFacePlate();
+        lightsOff();
+        faceplateOpen = true;
+      }
+
+      // Wait a bit to prevent multiple triggers
+      delay(300);
     }
   }
+
+  lastButtonState = reading;
 }
 
 void openFacePlate() {
   Serial.println("Opening faceplate");
-  
-  for (int pos = 170; pos >= 0; pos -= 5) {
-    servo1.write(pos);  
-    delay(10);
-  }
 
-  for (int pos2 = 0; pos2 <= 170; pos2 += 5) {
-    servo2.write(pos2); 
+  for (int pos = 170; pos >= 0; pos -= 5) {
+    servo1.write(pos);
     delay(10);
   }
-  delay(350); 
+  for (int pos2 = 0; pos2 <= 170; pos2 += 5) {
+    servo2.write(pos2);
+    delay(10);
+  }
+  delay(350);
+
+  servo1.detach();
+  servo2.detach();
 }
 
-
-// OPening/closing facemask functions
 void closeFacePlate() {
   Serial.println("Closing faceplate");
 
@@ -70,24 +85,24 @@ void closeFacePlate() {
     servo1.write(pos);
     delay(10);
   }
-
   for (int pos2 = 170; pos2 >= 0; pos2 -= 5) {
     servo2.write(pos2);
     delay(10);
   }
-  delay(350); 
+  delay(350);
+
+  servo1.detach();
+  servo2.detach();
 }
 
-
-// Lighting up eyes functions
 void lightsOn() {
   Serial.println("Turning lights on");
-  digitalWrite(eyes, HIGH);    
+  digitalWrite(EYES_PIN, HIGH);
 }
 
 void lightsOff() {
   Serial.println("Turning lights off");
-  digitalWrite(eyes, LOW);    
+  digitalWrite(EYES_PIN, LOW);
 }
 
 
