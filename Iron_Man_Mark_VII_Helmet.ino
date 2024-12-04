@@ -8,21 +8,24 @@ const int EYES_PIN = 9;
 
 bool faceplateOpen = false;
 unsigned long lastDebounceTime = 0;
-unsigned long debounceDelay = 250; // Increased debounce delay
+unsigned long debounceDelay = 50;
 int lastButtonState = LOW;
 
 void setup() {
   Serial.begin(9600);
 
+  pinMode(EYES_PIN, OUTPUT);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+
   servo1.attach(5);
   servo2.attach(6);
-
-  pinMode(EYES_PIN, OUTPUT);
-  pinMode(BUTTON_PIN, INPUT_PULLUP); // Use internal pull-up resistor
 
   // Initialize servos to closed position
   servo1.write(170);
   servo2.write(0);
+
+  servo1.detach();
+  servo2.detach();
 
   Serial.println("Setup complete");
 }
@@ -35,14 +38,9 @@ void loop() {
     lastDebounceTime = millis();
   }
 
-  servo1.attach(5);
-  servo2.attach(6);
-
   // Check if enough time has passed to consider the button stable
   if ((millis() - lastDebounceTime) > debounceDelay) {
-    // If the button is pressed (LOW because of INPUT_PULLUP)
     if (reading == LOW) {
-      // Toggle faceplate
       if (faceplateOpen) {
         closeFacePlate();
         lightsOn();
@@ -52,25 +50,23 @@ void loop() {
         lightsOff();
         faceplateOpen = true;
       }
-
-      // Wait a bit to prevent multiple triggers
       delay(300);
     }
   }
-
   lastButtonState = reading;
 }
 
 void openFacePlate() {
   Serial.println("Opening faceplate");
+  servo1.attach(5);
+  servo2.attach(6);
 
-  for (int pos = 170; pos >= 0; pos -= 5) {
+  for (int pos = 170; pos >= 10; pos -= 5) {
     servo1.write(pos);
-    delay(10);
   }
-  for (int pos2 = 0; pos2 <= 170; pos2 += 5) {
+
+  for (int pos2 = 10; pos2 <= 170; pos2 += 5) {
     servo2.write(pos2);
-    delay(10);
   }
   delay(350);
 
@@ -80,14 +76,15 @@ void openFacePlate() {
 
 void closeFacePlate() {
   Serial.println("Closing faceplate");
+  servo1.attach(5);
+  servo2.attach(6);
 
   for (int pos = 0; pos <= 170; pos += 5) {
     servo1.write(pos);
-    delay(10);
   }
+
   for (int pos2 = 170; pos2 >= 0; pos2 -= 5) {
     servo2.write(pos2);
-    delay(10);
   }
   delay(350);
 
